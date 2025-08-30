@@ -19,10 +19,17 @@ spec:
           ports:
             - name: http
               containerPort: 3000
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "localhost:9999,localhost:8888,127.0.0.1:9999,127.0.0.1:8888,localhost,127.0.0.1"
           volumeMounts:
             - name: cfg
               mountPath: /app/config
+            - name: logs
+              mountPath: /app/config/logs   # writable overlay for logs
       volumes:
         - name: cfg
           configMap:
             name: homepage
+        - name: logs
+          emptyDir: {}
