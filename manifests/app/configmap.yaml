@@ -5,12 +5,29 @@ metadata:
   namespace: default
   labels: { app.kubernetes.io/name: homepage }
 data:
-  # Minimal, known-good config
   settings.yaml: |
     title: "My GitOps Homepage"
   services.yaml: |
-    []
+    - Developer:
+        - GitHub:
+            href: https://github.com
+            icon: github
+    - Social:
+        - Reddit:
+            href: https://reddit.com
+            icon: reddit
+    - Entertainment:
+        - YouTube:
+            href: https://youtube.com
+            icon: youtube
   widgets.yaml: |
-    []
+    - resources:
+        backend: resources
+        expanded: true
+    - kubernetes:
+        cluster:
+          show: true
+        nodes:
+          show: true
   kubernetes.yaml: |
     mode: cluster
