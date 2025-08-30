@@ -14,7 +14,7 @@ spec:
     spec:
       serviceAccountName: homepage
 
-      # Copy config files from ConfigMap into a writable emptyDir before the app starts
+      # Copy config files into the EXACT path the app reads: /app/config
       initContainers:
         - name: init-config
           image: busybox:1.36
@@ -22,16 +22,15 @@ spec:
           args:
             - |
               set -e
-              mkdir -p /config
-              cp -r /config-src/* /config/ 2>/dev/null || true
-              # Ensure logs dir exists and is writable
-              mkdir -p /config/logs
-              ls -la /config
+              mkdir -p /app/config
+              cp -r /config-src/* /app/config/ 2>/dev/null || true
+              mkdir -p /app/config/logs
+              ls -la /app/config
           volumeMounts:
             - name: cfg-src
               mountPath: /config-src
             - name: cfg
-              mountPath: /config
+              mountPath: /app/config
 
       containers:
         - name: homepage
@@ -40,7 +39,6 @@ spec:
             - name: http
               containerPort: 3000
           env:
-            # allow both direct svc PF (9999) and Envoy PF (8888)
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "localhost:9999,localhost:8888,127.0.0.1:9999,127.0.0.1:8888,localhost,127.0.0.1"
           volumeMounts:
