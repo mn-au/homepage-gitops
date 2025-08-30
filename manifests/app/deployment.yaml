@@ -13,6 +13,26 @@ spec:
       labels: { app.kubernetes.io/name: homepage }
     spec:
       serviceAccountName: homepage
+
+      # Copy config files from ConfigMap into a writable emptyDir before the app starts
+      initContainers:
+        - name: init-config
+          image: busybox:1.36
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /config
+              cp -r /config-src/* /config/ 2>/dev/null || true
+              # Ensure logs dir exists and is writable
+              mkdir -p /config/logs
+              ls -la /config
+          volumeMounts:
+            - name: cfg-src
+              mountPath: /config-src
+            - name: cfg
+              mountPath: /config
+
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
@@ -20,16 +40,18 @@ spec:
             - name: http
               containerPort: 3000
           env:
+            # allow both direct svc PF (9999) and Envoy PF (8888)
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "localhost:9999,localhost:8888,127.0.0.1:9999,127.0.0.1:8888,localhost,127.0.0.1"
           volumeMounts:
             - name: cfg
               mountPath: /app/config
-            - name: logs
-              mountPath: /app/config/logs   # writable overlay for logs
+
       volumes:
-        - name: cfg
+        # Read-only source from ConfigMap
+        - name: cfg-src
           configMap:
             name: homepage
-        - name: logs
+        # Writable target used by both init + app
+        - name: cfg
           emptyDir: {}
