@@ -14,7 +14,7 @@ spec:
     spec:
       serviceAccountName: homepage
 
-      # Copy config files into the EXACT path the app reads: /app/config
+      # Copy config from ConfigMap if available, and ensure required files exist using image skeleton.
       initContainers:
         - name: init-config
           image: busybox:1.36
@@ -22,9 +22,25 @@ spec:
           args:
             - |
               set -e
+              echo "[init-config] preparing /app/config ..."
               mkdir -p /app/config
-              cp -r /config-src/* /app/config/ 2>/dev/null || true
+              # 1) Copy anything from ConfigMap mount if present
+              if [ -d /config-src ] && [ "$(ls -A /config-src 2>/dev/null || true)" ]; then
+                echo "[init-config] copying from /config-src -> /app/config"
+                cp -av /config-src/* /app/config/ 2>/dev/null || true
+              fi
+              # 2) Ensure required files exist (fallback to image skeleton)
+              for f in settings.yaml services.yaml widgets.yaml kubernetes.yaml; do
+                if [ ! -f "/app/config/$f" ]; then
+                  echo "[init-config] $f missing; copying from /app/src/skeleton/$f"
+                  cp -av "/app/src/skeleton/$f" "/app/config/$f"
+                else
+                  echo "[init-config] found /app/config/$f"
+                fi
+              done
+              # 3) Ensure logs dir exists and is writable
               mkdir -p /app/config/logs
+              echo "[init-config] final contents:"
               ls -la /app/config
           volumeMounts:
             - name: cfg-src
@@ -46,10 +62,10 @@ spec:
               mountPath: /app/config
 
       volumes:
-        # Read-only source from ConfigMap
+        # Read-only source from ConfigMap (your custom config)
         - name: cfg-src
           configMap:
             name: homepage
-        # Writable target used by both init + app
+        # Writable target used by init + app
         - name: cfg
           emptyDir: {}
